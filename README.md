@@ -1,9 +1,9 @@
 # Using Protocols to Build a (very) Generic Deque #
 
 This post is an update on a [previous implementation of a
-Deque](bigonotetaking.wordpress.com/2015/08/09/yet-another-root-of-all-evil/).
+Deque](https://bigonotetaking.wordpress.com/2015/08/09/yet-another-root-of-all-evil/).
 A full implementation of this Deque is available
-[here](https:github.com/oisdk/SwiftDataStructures/blob/master/SwiftDataStructures/Deque.swift).
+[here](https://github.com/oisdk/SwiftDataStructures/blob/master/SwiftDataStructures/Deque.swift).
 
 A Deque is a data structure comprised of two stacks, facing opposite directions.
 In this way, operations at either end of the Deque have the same complexity as
