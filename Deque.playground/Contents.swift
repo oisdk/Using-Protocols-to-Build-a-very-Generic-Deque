@@ -1,135 +1,244 @@
-//: ## The Deque ##
+//: # Using Protocols to Build a (very) Generic Deque #
+//:
+//: This post is an update on a [previous implementation of a
+//: Deque](https://bigonotetaking.wordpress.com/2015/08/09/yet-another-root-of-all-evil/).
+//: A full implementation of this Deque is available
+//: [here](https://github.com/oisdk/SwiftDataStructures/blob/master/SwiftDataStructures/Deque.swift).
+//:
+//: A Deque is a data structure comprised of two stacks, facing opposite directions.
+//: In this way, operations at either end of the Deque have the same complexity as
+//: operations on one end of the underlying stack. This implementation uses two
+//: arrays, with the front reversed: appending, prepending, and removal of the first
+//: and last elements are all (amortized) O(1).
+//:
+//: The standard library has three `Array` structs: `Array`, `ArraySlice`, and 
+//: `ContiguousArray`. They all have the same interface, with different underlying 
+//: implementations. An `Array` is a standard vector-like structure, which allows
+//: O(1) amortized appending, fast iteration, etc. A `ContiguousArray` has stricter
+//: rules about contiguity, but it's not bridged to Objective-C.
+let array  = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+let cArray: ContiguousArray = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+//: An `ArraySlice` is a reference into an `Array` or `ContiguousArray`, for more
+//: efficient slicing. All the information an `ArraySlice` contains is the beginning
+//: and end points of the slice (as well as any changes made to the slice separate 
+//: from the array)
+let slice = array[0..<6]
+//: To replicate these semantics in a Deque requires three separate structs: one with
+//: an `Array` as the stack, another with an `ArraySlice` as the stack, and a third 
+//: with a `ContiguousArray`. The standard library seems to duplicate the structs, 
+//: along with their methods and properties.
+//:
+//: It would be much nicer to just define a protocol that represented the 
+//: *difference* between the deque types: then you could just write the methods and 
+//: properties once, on top of it. Something like this:
+protocol DequeType0 {
+  typealias Container : RangeReplaceableCollectionType, MutableSliceable
+  var front: Container { get set }
+  var back : Container { get set }
+  init()
+}
+//: There’s one problem with this: both stacks need to be made public. It would be 
+//: much nicer to hide the stacks (especially since an invariant needs to be
+//: checked and maintained on every mutation). If anyone has an idea of how to
+//: accomplish that, [tweet me](https://twitter.com/oisdk).
+//:
+//: The first method to implement is a subscript. Indexing is difficult, because the
+//: front stack will be reversed, so the index used to get in to the Deque will need
+//: to be translated into an equivalent index in the array.
+//:
+//: Any (valid) index will point into either the front or back queue, and the
+//: transformations applied to it in each case is different. If it’s in the front, 
+//: the end result will look like `front[front.endIndex - 1 - i]`, whereas if it’s in
+//: the back, it should be `back[i - front.endIndex]`. There’s nothing specified 
+//: about the Containers except that they’re `RangeReplaceableCollectionType` and
+//: `MutableSliceable`, so the index types will have to be as generic as possible. 
+//: (you could specify `where Index == Int`, but that’s more specific than needed, 
+//: and not very extensible.)
+//:
+//: Both of those transformations are subtractions, an operation that's possible on
+//: `RandomAccessIndexType`s with the `advancedBy` method. `advancedBy` takes the 
+//: associated `Distance` type of the `RandomAccessIndexType`. That's enough
+//: information to figure out that the Deque's index type must be the same as the
+//: Distance of the Index of the Container.
+extension DequeType0 {
+  typealias Index = Container.Index.Distance
+}
+//: The method that will translate an index into the relevant index in the stacks
+//: will return an enum:
+public enum IndexLocation0<I> {
+  case Front(I), Back(I)
+}
+//: Then, the translate method itself:
+extension DequeType0 where
+  Container.Index : RandomAccessIndexType,
+  Container.Index.Distance : ForwardIndexType {
+  
+  private func translate(i: Container.Index.Distance)
+    -> IndexLocation<Container.Index> {
+    return i < front.count ?
+      .Front(front.endIndex.predecessor().advancedBy(-i)) :
+      .Back(back.startIndex.advancedBy(i - front.count))
+  }
+}
+//: This performs two steps:
+//: 1. Check which stack it's in.
+//: 2. Subtract in the appropriate order
+let d: Deque = [1, 2, 3, 4, 5, 6]
 
-let d: Deque = [0, 1, 2, 3, 4, 5]
+d.translate(0)
+d.translate(4)
+//: This means that the logic for converting distance to index is separated from the 
+//: logic for actual indexing. Great! Here’s the indexing:
+extension DequeType0 where
+  Container.Index : RandomAccessIndexType,
+  Container.Index.Distance : ForwardIndexType {
+  var startIndex: Container.Index.Distance { return 0 }
+  var endIndex  : Container.Index.Distance { return front.count + back.count }
+  subscript(i: Container.Index.Distance) -> Container.Generator.Element {
+    get {
+      switch translate(i) {
+      case let .Front(i): return front[i]
+      case let .Back(i): return back[i]
+      }
+    } set {
+      switch translate(i) {
+      case let .Front(i): front[i] = newValue
+      case let .Back(i): back[i] = newValue
+      }
+    }
+  }
+}
+//: This makes things much easier to test and debug.
+//:
+//: Here's where the power of protocols becomes obvious. If you go back to the 
+//: original definition of `DequeType`, you can add `Indexable`. It may seem like now
+//: only indexable things can conform, but what happens in practice is that when 
+//: `Indexable` looks for its requirements, *it can use the implementations in
+//: DequeType*. That means that we’ve just made anything that can conform to
+//: `DequeType` indexable. That’s awesome.
+//:
+//: Next job is ranged indices. This is a good bit more complicated than the 
+//: individual indices, so it definitely will benefit from being separated into a 
+//: translate method:
+extension DequeType0 where
+  Container.Index : RandomAccessIndexType,
+  Container.Index.Distance : BidirectionalIndexType {
+  
+  private func translate
+    (i: Range<Container.Index.Distance>)
+    -> IndexRangeLocation<Container.Index> {
+      if i.endIndex <= front.count {
+        let s = front.endIndex.advancedBy(-i.endIndex)
+        if s == front.startIndex && i.isEmpty { return .Between }
+        let e = front.endIndex.advancedBy(-i.startIndex)
+        return .Front(s..<e)
+      }
+      if i.startIndex >= front.count {
+        let s = back.startIndex.advancedBy(i.startIndex - front.count)
+        let e = back.startIndex.advancedBy(i.endIndex - front.count)
+        return .Back(s..<e)
+      }
+      let f = front.startIndex..<front.endIndex.advancedBy(-i.startIndex)
+      let b = back.startIndex..<back.startIndex.advancedBy(i.endIndex - front.count)
+      return .Over(f, b)
+  }
+}
 
-//: Under the hood, this deque is made up of two arrays. The front is reversed:
+let otherDeque: Deque = [0, 1, 2, 3, 4, 5]
 
-d.front.description
-
-//: And the back is not:
-
-d.back.description
-
-//: ### Indexing ###
-
-//: Index into the front, with 0:
-//: 1. Figure out which queue it's in
-//: 2. It's in the front, so subtract it from the end
-//: 3. Index into the relevant queue
-
-let index = 0
-d[index]
-
-// Step 1.
-index < d.front.endIndex
-0     < 3
-
-// Step 2.
-(d.front.endIndex - 1) - index
-(3 - 1) - 0
-
-// Step 3.
-d.front[2]
-
-//: Index into the back, with 4:
-//: 1. Figure out which queue it's in:
-//: 2. It's in the back, so the subtraction is reversed:
-//: 3. Use that to index into the back:
-
-let backIndex = 4
-d[backIndex]
-
-// Step 1.
-backIndex < d.front.endIndex
-4         < 3
-
-// Step 2.
-backIndex - d.front.endIndex
-4 - 3
-
-// Step 3.
-d.back[1]
-
-//: Instead of having all of this logic within the `subscript`, we could refactor it
-//: out, into something that translates an integer into the releveant index in the 
-//: relevant queue. To start with, we'll need an enum with a payload: `IndexLocation`.
-//: (This is a private enum in the full implementation, [here](https://github.com/oisdk/SwiftDataStructures/blob/master/SwiftDataStructures/Deque.swift#L80-L82).
-//: It's public here to make it visible in the playground.)
-
-let indexLoc   = IndexLocation.Front(2)
-let translated = d.translate(2)
-
-//extension DequeType where
-//  Container.Index : RandomAccessIndexType,
-//  Container.Index.Distance : ForwardIndexType {
+otherDeque.translate(0...2)
+otherDeque.translate(4...5)
+otherDeque.translate(2...5)
+otherDeque.translate(3..<3)
+//: The invariant that must be maintained in the deque is this: if either stack has
+//: more than one element, the other cannot be empty. If the invariant is violated, 
+//: the longer stack is reversed, and put in place of the shorter.
+//public enum Balance {
+//  case FrontEmpty, BackEmpty, Balanced
+//}
+//
+//extension DequeType {
 //  
-//  public func translate(i: Container.Index.Distance) -> IndexLocation<Container.Index> {
-//    return i < front.count ?
-//      .Front(front.endIndex.predecessor().advancedBy(-i)) :
-//      .Back(back.startIndex.advancedBy(i - front.count))
+//  public var balance: Balance {
+//    let (f, b) = (front.count, back.count)
+//    if f == 0 {
+//      if b > 1 {
+//        return .FrontEmpty
+//      }
+//    } else if b == 0 {
+//      if f > 1 {
+//        return .BackEmpty
+//      }
+//    }
+//    return .Balanced
+//  }
+//  
+//  public var isBalanced: Bool {
+//    return balance == .Balanced
 //  }
 //}
-
-//: We can do a similar thing with index ranges:
-
-d.translate(0...2).debugDescription
-d.translate(4...5).debugDescription
-d.translate(2...5).debugDescription
-d.translate(3..<3).debugDescription
-//: ### Extra methods ###
-
 //: A deque is a good data structure for certain uses, especially those that require
-//: popping and appending from either end. `popFirst()` and `popLast()` aren't included
-//: in the standard `RangeReplaceableCollectionType`, though, so we'll have to add our
-//: own.
-
+//: popping and appending from either end. `popFirst()` and `popLast()` aren't
+//: included in the standard `RangeReplaceableCollectionType`, though, so we'll have 
+//: to add our own.
 //extension RangeReplaceableCollectionType where Index : BidirectionalIndexType {
 //  private mutating func popLast() -> Generator.Element? {
 //    return isEmpty ? nil : removeLast()
 //  }
 //}
 
-var mutableD = d
-mutableD.popLast()
-mutableD.debugDescription
+var mutableDeque: Deque = [0, 1, 2, 3, 4, 5]
+mutableDeque.popLast()
+mutableDeque.debugDescription
 
 //extension DequeType where Container.Index : BidirectionalIndexType {
 //  public mutating func popLast() -> Container.Generator.Element? {
 //    return back.popLast()
 //  }
 //}
-
 //: The method needs to include `check()`, which we can do with `defer`
-
 //mutating func popLast() -> Container.Generator.Element? {
 //  defer { check() }
 //  return back.popLast()
 //}
 
-mutableD.popLast()
-mutableD.debugDescription
-mutableD.popLast()
-mutableD.debugDescription
+mutableDeque.popLast()
+mutableDeque
+mutableDeque.popLast()
+mutableDeque
 //: You also can't just pop from the back queue in `popLast()`, because it may be the
-//: case that the front queue has one element left
-
+//: case that the front stack has one element left
 //mutating func popLast() -> Container.Generator.Element? {
 //  defer { check() }
 //  return back.popLast() ?? front.popLast()
 //}
 
-mutableD.popLast()
-mutableD.popLast()
-mutableD.debugDescription
-mutableD.popLast()
-mutableD.debugDescription
-mutableD.popLast()
-mutableD
-
-//: The `DequeType` protocol can have any `RangeReplaceableCollectionType` as its
-//: container, as long as you define a sliced type. You can even have a Deque made up
-//: of two Deques:
-
+mutableDeque.popLast()
+mutableDeque.popLast()
+mutableDeque
+mutableDeque.popLast()
+mutableDeque
+mutableDeque.popLast()
+mutableDeque
+//: The rest of the Deque was easy, with little to no repetition. Using protocols in
+//: this way was really surprisingly powerful: now, you can define a `DequeType`,
+//: with full access to all of the collection methods, all the way up to
+//: `RangeReplaceableCollectionType`, in five lines:
+//public struct Deque<Element> : DequeType {
+//  public var front, back: [Element]
+//  public typealias SubSequence = DequeSlice<Element>
+//  public init() { (front, back) = ([], []) }
+//}
+//
+//public struct DequeSlice<Element> : DequeType {
+//  public var front, back: ArraySlice<Element>
+//  public typealias SubSequence = DequeSlice
+//  public init() { (front, back) = ([], []) }
+//}
+//: There’s no performance hit, there’s no safety problems. I only have one version 
+//: of code to test, one version to change, one version to read. It’s completely 
+//: extensible: you could use any kind of stack for the front and back. Even another 
+//: Deque, if you were so inclined:
 struct DequeDeque<Element> : DequeType {
   var front, back: Deque<Element>
   typealias SubSequence = DequeDequeSlice<Element>
@@ -143,6 +252,6 @@ struct DequeDequeSlice<Element> : DequeType {
 }
 
 let dd: DequeDeque = [1, 2, 3, 4, 5, 6, 7, 8]
-dd.debugDescription
-dd.front.debugDescription
-dd.back.debugDescription
+dd.front
+dd.back
+//: Woo protocols!

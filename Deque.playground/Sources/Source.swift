@@ -13,7 +13,7 @@ public protocol DequeType :
   MutableSliceable,
   RangeReplaceableCollectionType,
   CustomDebugStringConvertible,
-ArrayLiteralConvertible {
+  ArrayLiteralConvertible {
   /// The type that represents the queues.
   typealias Container : RangeReplaceableCollectionType, MutableSliceable
   /// The front queue. It is stored in reverse.
@@ -38,7 +38,7 @@ extension DequeType {
 // MARK: Initializers
 
 extension DequeType {
-  internal init(balancedF: Container, balancedB: Container) {
+  public init(balancedF: Container, balancedB: Container) {
     self.init()
     front = balancedF
     back  = balancedB
@@ -54,7 +54,7 @@ extension DequeType {
       let mid = col.count / 2
       let midInd = col.startIndex.advancedBy(mid)
       front.reserveCapacity(mid)
-      back.reserveCapacity(mid)
+      back.reserveCapacity(mid.successor())
       front.extend(col[col.startIndex..<midInd].reverse())
       back.extend(col[midInd..<col.endIndex])
   }
@@ -80,7 +80,7 @@ public enum IndexLocation<I> {
   case Front(I), Back(I)
 }
 
-extension IndexLocation: CustomDebugStringConvertible {
+extension IndexLocation : CustomDebugStringConvertible {
   public var debugDescription: String {
     switch self {
     case let .Front(i): return "Front: \(i)"
@@ -91,7 +91,7 @@ extension IndexLocation: CustomDebugStringConvertible {
 
 extension DequeType where
   Container.Index : RandomAccessIndexType,
-  Container.Index.Distance : ForwardIndexType {
+Container.Index.Distance : ForwardIndexType {
   
   public func translate(i: Container.Index.Distance) -> IndexLocation<Container.Index> {
     return i < front.count ?
@@ -139,17 +139,17 @@ public enum IndexRangeLocation<I : ForwardIndexType> {
 extension IndexRangeLocation : CustomDebugStringConvertible {
   public var debugDescription: String {
     switch self {
-    case let .Front(r)  : return "Front: \(r)"
-    case let .Back(r)   : return "Back: \(r)"
+    case let .Front(i): return "Front: \(i)"
+    case let .Back(i): return "Back: \(i)"
     case let .Over(f, b): return "Over: \(f), \(b)"
-    case .Between       : return "Between"
+    case .Between: return "Between"
     }
   }
 }
 
 extension DequeType where
   Container.Index : RandomAccessIndexType,
-  Container.Index.Distance : BidirectionalIndexType {
+Container.Index.Distance : BidirectionalIndexType {
   
   public func translate
     (i: Range<Container.Index.Distance>)
@@ -204,13 +204,13 @@ SubSequence.Generator.Element == Container.Generator.Element {
 
 // MARK: Balance
 
-private enum Balance {
+public enum Balance {
   case FrontEmpty, BackEmpty, Balanced
 }
 
 extension DequeType {
   
-  private var balance: Balance {
+  public var balance: Balance {
     let (f, b) = (front.count, back.count)
     if f == 0 {
       if b > 1 {
@@ -224,13 +224,13 @@ extension DequeType {
     return .Balanced
   }
   
-  internal var isBalanced: Bool {
+  public var isBalanced: Bool {
     return balance == .Balanced
   }
 }
 
 extension DequeType where Container.Index : BidirectionalIndexType {
-  private mutating func check() {
+  public mutating func check() {
     switch balance {
     case .FrontEmpty:
       let newBack = back.removeLast()
@@ -297,7 +297,7 @@ Container.Index.Distance : BidirectionalIndexType {
 }
 
 extension RangeReplaceableCollectionType where Index : BidirectionalIndexType {
-  private mutating func popLast() -> Generator.Element? {
+  public mutating func popLast() -> Generator.Element? {
     return isEmpty ? nil : removeLast()
   }
 }
@@ -333,9 +333,9 @@ public struct DequeGenerator<
   Container.Index : BidirectionalIndexType
 > : GeneratorType {
   
-  private let front, back: Container
-  private var i: Container.Index
-  private var onBack: Bool
+  public let front, back: Container
+  public var i: Container.Index
+  public var onBack: Bool
   /**
   Advance to the next element and return it, or `nil` if no next element exists.
   
