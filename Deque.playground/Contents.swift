@@ -153,49 +153,49 @@ otherDeque.translate(3..<3)
 //: The invariant that must be maintained in the deque is this: if either stack has
 //: more than one element, the other cannot be empty. If the invariant is violated, 
 //: the longer stack is reversed, and put in place of the shorter.
-//public enum Balance {
-//  case FrontEmpty, BackEmpty, Balanced
-//}
-//
-//extension DequeType {
-//  
-//  public var balance: Balance {
-//    let (f, b) = (front.count, back.count)
-//    if f == 0 {
-//      if b > 1 {
-//        return .FrontEmpty
-//      }
-//    } else if b == 0 {
-//      if f > 1 {
-//        return .BackEmpty
-//      }
-//    }
-//    return .Balanced
-//  }
-//  
-//  public var isBalanced: Bool {
-//    return balance == .Balanced
-//  }
-//}
+public enum Balance0 {
+  case FrontEmpty, BackEmpty, Balanced
+}
+
+extension DequeType0 {
+  
+  var balance: Balance {
+    let (f, b) = (front.count, back.count)
+    if f == 0 {
+      if b > 1 {
+        return .FrontEmpty
+      }
+    } else if b == 0 {
+      if f > 1 {
+        return .BackEmpty
+      }
+    }
+    return .Balanced
+  }
+  
+  var isBalanced: Bool {
+    return balance == .Balanced
+  }
+}
 //: A deque is a good data structure for certain uses, especially those that require
 //: popping and appending from either end. `popFirst()` and `popLast()` aren't
 //: included in the standard `RangeReplaceableCollectionType`, though, so we'll have 
 //: to add our own.
-//extension RangeReplaceableCollectionType where Index : BidirectionalIndexType {
-//  private mutating func popLast() -> Generator.Element? {
-//    return isEmpty ? nil : removeLast()
-//  }
-//}
+extension RangeReplaceableCollectionType where Index : BidirectionalIndexType {
+  private mutating func popLast0() -> Generator.Element? {
+    return isEmpty ? nil : removeLast()
+  }
+}
 
 var mutableDeque: Deque = [0, 1, 2, 3, 4, 5]
 mutableDeque.popLast()
 mutableDeque.debugDescription
 
-//extension DequeType where Container.Index : BidirectionalIndexType {
-//  public mutating func popLast() -> Container.Generator.Element? {
-//    return back.popLast()
-//  }
-//}
+extension DequeType0 where Container.Index : BidirectionalIndexType {
+  mutating func popLast() -> Container.Generator.Element? {
+    return back.popLast()
+  }
+}
 //: The method needs to include `check()`, which we can do with `defer`
 //mutating func popLast() -> Container.Generator.Element? {
 //  defer { check() }
@@ -224,17 +224,17 @@ mutableDeque
 //: this way was really surprisingly powerful: now, you can define a `DequeType`,
 //: with full access to all of the collection methods, all the way up to
 //: `RangeReplaceableCollectionType`, in five lines:
-//public struct Deque<Element> : DequeType {
-//  public var front, back: [Element]
-//  public typealias SubSequence = DequeSlice<Element>
-//  public init() { (front, back) = ([], []) }
-//}
-//
-//public struct DequeSlice<Element> : DequeType {
-//  public var front, back: ArraySlice<Element>
-//  public typealias SubSequence = DequeSlice
-//  public init() { (front, back) = ([], []) }
-//}
+public struct Deque<Element> : DequeType {
+  public var front, back: [Element]
+  public typealias SubSequence = DequeSlice<Element>
+  public init() { (front, back) = ([], []) }
+}
+
+public struct DequeSlice<Element> : DequeType {
+  public var front, back: ArraySlice<Element>
+  public typealias SubSequence = DequeSlice
+  public init() { (front, back) = ([], []) }
+}
 //: There’s no performance hit, there’s no safety problems. I only have one version 
 //: of code to test, one version to change, one version to read. It’s completely 
 //: extensible: you could use any kind of stack for the front and back. Even another 
