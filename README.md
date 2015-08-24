@@ -54,7 +54,7 @@ protocol DequeType {
 There’s one problem with this: both stacks need to be made public. It would be 
 much nicer to hide the stacks (especially since an invariant needs to be
 checked and maintained on every mutation). If anyone has an idea of how to
-accomplish that, [tweet me](https:twitter.com/oisdk).
+accomplish that, [tweet me](https://twitter.com/oisdk).
 
 The first method to implement is a subscript. Indexing is difficult, because the
 front stack will be reversed, so the index used to get in to the Deque will need
