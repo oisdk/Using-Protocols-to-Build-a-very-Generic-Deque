@@ -79,8 +79,10 @@ Distance of the Index of the Container.
 extension DequeType {
   typealias Index = Container.Index.Distance
 }
+```
 The method that will translate an index into the relevant index in the stacks
 will return an enum:
+```swift
 public enum IndexLocation<I> {
   case Front(I), Back(I)
 }
