@@ -104,10 +104,10 @@ This performs two steps:
 2. Subtract in the appropriate order
 
 ```swift
-let d: Deque = [1, 2, 3, 4, 5, 6]
+let d: Deque = [1, 2, 3, 4, 5, 6] // [1, 2, 3 | 4, 5, 6]
 
-d.translate(0)
-d.translate(4)
+d.translate(0) // Front: 2
+d.translate(4) // Back: 1
 ```
 
 This means that the logic for converting distance to index is separated from the 
@@ -173,12 +173,12 @@ extension DequeType where
   }
 }
 
-let otherDeque: Deque = [0, 1, 2, 3, 4, 5]
+let otherDeque: Deque = [0, 1, 2, 3, 4, 5] // [0, 1, 2 | 3, 4, 5]
 
-otherDeque.translate(0...2)
-otherDeque.translate(4...5)
-otherDeque.translate(2...5)
-otherDeque.translate(3..<3)
+otherDeque.translate(0...2) // Front: 0..<3
+otherDeque.translate(4...5) // Back: 1..<3
+otherDeque.translate(2...5) // Over: 0..<1, 0..<3
+otherDeque.translate(3..<3) // Between
 ```
 
 The invariant that must be maintained in the deque is this: if either stack has
@@ -225,8 +225,8 @@ extension RangeReplaceableCollectionType where Index : BidirectionalIndexType {
 }
 
 var mutableDeque: Deque = [0, 1, 2, 3, 4, 5]
-mutableDeque.popLast()
-mutableDeque.debugDescription
+mutableDeque.popLast() // 5
+mutableDeque           // [0, 1, 2 | 3, 4]
 
 extension DequeType where Container.Index : BidirectionalIndexType {
   public mutating func popLast() -> Container.Generator.Element? {
@@ -243,10 +243,10 @@ mutating func popLast() -> Container.Generator.Element? {
   return back.popLast()
 }
 
-mutableDeque.popLast()
-mutableDeque
-mutableDeque.popLast()
-mutableDeque
+mutableDeque.popLast() // 4
+mutableDeque           // [0, 1, 2 | 3]
+mutableDeque.popLast() // 3
+mutableDeque           // [0 | 1, 2]
 ```
 
 You also can't just pop from the back queue in `popLast()`, because it may be the
@@ -258,13 +258,12 @@ mutating func popLast() -> Container.Generator.Element? {
   return back.popLast() ?? front.popLast()
 }
 
-mutableDeque.popLast()
-mutableDeque.popLast()
-mutableDeque
-mutableDeque.popLast()
-mutableDeque
-mutableDeque.popLast()
-mutableDeque
+mutableDeque.popLast() // 2
+mutableDeque.popLast() // 1
+mutableDeque           // [0|]
+mutableDeque.popLast() // 0
+mutableDeque           // [|]
+mutableDeque.popLast() // nil
 ```
 
 The rest of the Deque was easy, with little to no repetition. Using protocols in
@@ -305,8 +304,8 @@ struct DequeDequeSlice<Element> : DequeType {
 }
 
 let dd: DequeDeque = [1, 2, 3, 4, 5, 6, 7, 8]
-dd.front
-dd.back
+dd.front // [4 | 3, 2, 1]
+dd.back  // [5 | 6, 7, 8]
 ```
 
 Woo protocols!
