@@ -1,5 +1,7 @@
 # Using Protocols to Build a (very) Generic Deque #
 
+(Download the playground to use the code and see the outputs)
+
 This post is an update on a [previous implementation of a
 Deque](https://bigonotetaking.wordpress.com/2015/08/09/yet-another-root-of-all-evil/).
 A full implementation of this Deque is available
