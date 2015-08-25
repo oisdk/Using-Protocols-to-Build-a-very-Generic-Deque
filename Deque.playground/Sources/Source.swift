@@ -29,9 +29,9 @@ public protocol DequeType :
 extension DequeType {
   /// A textual representation of `self`, suitable for debugging.
   public var debugDescription: String {
-    return "[" +
-      ", ".join(front.reverse().map { String(reflecting: $0) }) + " | " +
-      ", ".join(back.map { String(reflecting: $0) }) + "]"
+    let fStr = front.reverse().map{String(reflecting: $0)}.joinWithSeparator(", ")
+    let bStr = back.map{String(reflecting: $0)}.joinWithSeparator(", ")
+    return "[" + fStr + " | " + bStr + "]"
   }
 }
 
@@ -55,8 +55,8 @@ extension DequeType {
       let midInd = col.startIndex.advancedBy(mid)
       front.reserveCapacity(mid)
       back.reserveCapacity(mid.successor())
-      front.extend(col[col.startIndex..<midInd].reverse())
-      back.extend(col[midInd..<col.endIndex])
+      front.appendContentsOf(col[col.startIndex..<midInd].reverse())
+      back.appendContentsOf(col[midInd..<col.endIndex])
   }
 }
 
@@ -463,7 +463,7 @@ extension DequeType where Container.Index : BidirectionalIndexType {
     S : SequenceType where
     S.Generator.Element == Container.Generator.Element
     >(x: S) {
-      front.extend(x.reverse())
+      front.appendContentsOf(x.reverse())
       check()
   }
 }

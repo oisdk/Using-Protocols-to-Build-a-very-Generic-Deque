@@ -74,7 +74,7 @@ extension DequeType0 where
   Container.Index.Distance : ForwardIndexType {
   
   private func translate(i: Container.Index.Distance)
-    -> IndexLocation<Container.Index> {
+    -> IndexLocation0<Container.Index> {
     return i < front.count ?
       .Front(front.endIndex.predecessor().advancedBy(-i)) :
       .Back(back.startIndex.advancedBy(i - front.count))
